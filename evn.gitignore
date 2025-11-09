@@ -1,0 +1,53 @@
+# 🧠 === Environnement Python ===
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+*.db
+*.pid
+
+# 📦 === Environnement virtuel ===
+venv/
+env/
+.venv/
+
+# 🧰 === Config / système ===
+.DS_Store
+Thumbs.db
+
+# 🔐 === Variables d'environnement ===
+.env
+.env.*
+!.env.example  # on garde juste le modèle
+
+# 🧾 === Fichiers de dépendances (backup, lock) ===
+Pipfile
+Pipfile.lock
+poetry.lock
+
+# 🌐 === Cache / build web ===
+node_modules/
+dist/
+build/
+*.cache/
+*.bak
+
+# 🗃️ === Sauvegardes & export ===
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+*.bak
+*.tmp
+*.swp
+
+# 💾 === Base de données locale ===
+taptoearn.db
+
+# 💡 === VSCode & IDE ===
+.vscode/
+.idea/
+*.code-workspace

@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Mineur Clicker — Intégration API Flask</title>
+
+<!-- Font Awesome pour les icônes -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-k6RqeWeci5ZR/Lv4MR0sA0FfDOMb1L6g0c+qGq5m2lVw6p6KZ9Yq2f6S3n9jq0v1b1X0sa0b6MZ5z6s5Y2d2w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<style>
+:root{
+  --bg:#0b1220;
+  --panel:#0f1724;
+  --accent:#ffcc00;
+  --muted:#94a3b8;
+  --glass: rgba(255,255,255,0.03);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  color-scheme: dark;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:
+  radial-gradient(1200px 600px at 10% 10%, rgba(255,204,0,0.03), transparent),
+  radial-gradient(900px 400px at 90% 90%, rgba(255,255,255,0.02), transparent),
+  var(--bg);
+  color:#e6eef8;
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+}
+
+.container{
+  max-width:1000px;
+  margin:28px auto;
+  padding:18px;
+  display:grid;
+  grid-template-columns: 1fr 320px;
+  gap:20px;
+}
+
+.card{
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius:14px;
+  padding:18px;
+  box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+.header-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+.title{ font-size:20px; font-weight:800; display:flex; gap:10px; align-items:center;}
+.subtitle{ color:var(--muted); font-size:13px; }
+
+.stats{ display:flex; gap:12px; margin-top:12px; flex-wrap:wrap; align-items:center; }
+.stat{
+  background:var(--glass);
+  padding:10px 12px;
+  border-radius:10px;
+  min-width:140px;
+  text-align:left;
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+.stat .num{ font-size:18px; font-weight:800; color:var(--accent); display:flex; gap:8px; align-items:center; }
+.stat .lbl{ font-size:12px; color:var(--muted); margin-top:4px; }
+
+.mine-area{ margin-top:18px; text-align:center; }
+
+.mine-btn{
+  display:inline-grid;
+  place-items:center;
+  width:220px;
+  height:220px;
+  border-radius:50%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border: 8px solid rgba(255,255,255,0.03);
+  cursor:pointer;
+  user-select:none;
+  transition: transform .08s ease;
+  box-shadow: 0 10px 30px rgba(2,6,23,0.6), inset 0 -4px 12px rgba(0,0,0,0.3);
+}
+.mine-btn:active{ transform: scale(.98); }
+.mine-btn .count{ font-size:34px; font-weight:900; color:var(--accent); display:flex; gap:8px; align-items:center; justify-content:center; }
+.mine-btn .sub{ font-size:14px; color:var(--muted); margin-top:6px; }
+
+.upgrades{ margin-top:16px; display:flex; gap:12px; flex-direction:column; align-items:stretch; }
+
+.upgrade{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px;
+  border-radius:10px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.02);
+}
+.upgrade .left{ display:flex; flex-direction:column; gap:4px; }
+.upgrade .name{ font-weight:800; }
+.upgrade .desc{ font-size:12px; color:var(--muted); }
+.upgrade button{ background: linear-gradient(180deg, var(--accent), #e6b400); color:#071024; border:none; padding:8px 12px; font-weight:800; border-radius:8px; cursor:pointer; display:flex; gap:8px; align-items:center; }
+.upgrade button[disabled]{ opacity:0.5; cursor:not-allowed; }
+
+.controls{ display:flex; gap:8px; margin-top:10px; }
+.controls button{ flex:1; padding:10px; border-radius:8px; border:none; cursor:pointer; background: rgba(255,255,255,0.03); color:var(--muted); display:flex; gap:8px; align-items:center; justify-content:center; }
+
+.side-panel{ position:sticky; top:20px; align-self:start; display:flex; flex-direction:column; gap:12px; }
+
+.log{ height:220px; overflow:auto; padding:10px; border-radius:10px; background: rgba(255,255,255,0.02); font-size:13px; color:var(--muted); }
+
+.small{ font-size:12px; padding:6px 8px; }
+
+.icon { color:var(--accent); margin-right:6px; }
+
+/* Responsive */
+@media (max-width:920px){
+  .container{ grid-template-columns: 1fr; padding:12px; }
+  .mine-btn{ width:180px; height:180px; }
+  .stat{ min-width:120px; }
+}
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header-row">
+        <div>
+          <div class="title"><i class="fa-solid fa-gem icon"></i> Mineur Clicker</div>
+          <div class="subtitle">Interface locale + synchronisation avec ton API Flask</div>
+        </div>
+
+        <div style="text-align:right">
+          <div style="font-size:13px;color:var(--muted)">Global server balance</div>
+          <div style="font-weight:900;color:var(--accent);font-size:18px"><i class="fa-solid fa-server icon" style="color:var(--muted);"></i><span id="serverBalance">—</span></div>
+          <div style="font-size:12px;color:var(--muted)">server per_click: <span id="serverPerClick">—</span></div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="num"><i class="fa-solid fa-coins icon"></i><span id="coins">0</span></div>
+          <div class="lbl">Coins (local)</div>
+        </div>
+
+        <div class="stat">
+          <div class="num"><i class="fa-solid fa-hammer icon"></i><span id="perClick">+1</span></div>
+          <div class="lbl">Par clic (local)</div>
+        </div>
+
+        <div class="stat">
+          <div class="num"><i class="fa-solid fa-person-digging icon"></i><span id="perSec">0/s</span></div>
+          <div class="lbl">Par seconde (local)</div>
+        </div>
+      </div>
+
+      <div class="mine-area">
+        <div class="mine-btn" id="mineBtn" title="Clique pour miner">
+          <div>
+            <div class="count"><i class="fa-solid fa-circle-arrow-up" style="font-size:28px;color:var(--muted)"></i><span id="bigCount">Miner</span></div>
+            <div class="sub" id="subText">Clique ou espace</div>
+          </div>
+        </div>
+
+        <div class="upgrades">
+          <div class="upgrade">
+            <div class="left">
+              <div class="name"><i class="fa-solid fa-hammer icon" style="color:var(--accent)"></i> Améliorer Pioche</div>
+              <div class="desc" id="pickDesc">Augmente les gains par clic (local).</div>
+            </div>
+            <div>
+              <div style="text-align:right"><strong id="pickCost">50</strong> ⚒️</div>
+              <button id="buyPick"><i class="fa-solid fa-plus"></i> Acheter</button>
+            </div>
+          </div>
+
+          <div class="upgrade">
+            <div class="left">
+              <div class="name"><i class="fa-solid fa-person-digging icon" style="color:var(--accent)"></i> Mineur Automatique</div>
+              <div class="desc" id="autoDesc">Ajoute des pièces chaque seconde (local).</div>
+            </div>
+            <div>
+              <div style="text-align:right"><strong id="autoCost">200</strong> ⚒️</div>
+              <button id="buyAuto"><i class="fa-solid fa-plus"></i> Acheter</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls" style="margin-top:14px;">
+          <button id="syncServer" title="Récupère l'état depuis le serveur"><i class="fa-solid fa-sync"></i> Sync serveur</button>
+          <button id="resetBtn" class="small"><i class="fa-solid fa-rotate-left"></i> Réinitialiser</button>
+          <button id="exportBtn" class="small"><i class="fa-regular fa-file-export"></i> Export</button>
+        </div>
+
+        <div style="margin-top:12px;color:var(--muted);font-size:13px">Note: les clics envoient également une requête POST à <code>/api/click</code> pour incrémenter la balance globale (serveur).</div>
+      </div>
+    </div>
+
+    <aside class="side-panel card">
+      <div style="font-weight:900;margin-bottom:8px">Journal</div>
+      <div class="log" id="log"></div>
+
+      <div style="margin-top:8px">
+        <div style="font-weight:900">Progression</div>
+        <div style="margin-top:6px;font-size:13px;color:var(--muted)">
+          <div>Pioche niveau: <strong id="pickLevel">0</strong></div>
+          <div>Mineurs automatiques: <strong id="autoLevel">0</strong></div>
+        </div>
+      </div>
+
+      <div style="margin-top:10px">
+        <div style="font-weight:900">Debug / Info</div>
+        <div style="margin-top:6px;font-size:13px;color:var(--muted)">
+          <div>Mode: <strong>HTML+JS client</strong></div>
+          <div>API endpoints: <code>/api/state</code>, <code>/api/click</code></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+<script>
+/*
+  index.html client JS
+  - Garde progression locale (localStorage)
+  - Appelle /api/state pour afficher balance globale et server per_click
+  - Sur clic local: ajoute local coins selon perClick, et POST /api/click
+  - Upgrades et auto-minage sont locaux
+  - No API keys in client
+*/
+
+/* ---------- Helpers ---------- */
+const $ = id => document.getElementById(id);
+function dbgLog(t){ const n=document.createElement('div'); n.textContent='['+new Date().toLocaleTimeString()+'] '+t; $('log').prepend(n); while($('log').children.length>500) $('log').removeChild($('log').lastChild); }
+
+/* ---------- Default and load/save ---------- */
+const DEFAULT = {
+  coins: 0,
+  perClick: 1,
+  perSec: 0,
+  pickLevel: 0,
+  autoLevel: 0,
+  pickBaseCost: 50,
+  autoBaseCost: 200,
+  version: 1
+};
+
+let state = loadState();
+
+function loadState(){
+  try{
+    const s = localStorage.getItem('mineur_local_v1');
+    if(s) return Object.assign({}, DEFAULT, JSON.parse(s));
+  }catch(e){}
+  return Object.assign({}, DEFAULT);
+}
+function saveState(){ localStorage.setItem('mineur_local_v1', JSON.stringify(state)); }
+
+/* ---------- Render ---------- */
+function fmt(n){ return Math.floor(n); }
+function render(){
+  $('coins').textContent = fmt(state.coins);
+  $('perClick').textContent = '+' + fmt(state.perClick);
+  $('perSec').textContent = fmt(state.perSec) + '/s';
+  $('pickCost').textContent = Math.floor(state.pickBaseCost * Math.pow(1.6, state.pickLevel));
+  $('autoCost').textContent = Math.floor(state.autoBaseCost * Math.pow(1.7, state.autoLevel));
+  $('pickLevel').textContent = state.pickLevel;
+  $('autoLevel').textContent = state.autoLevel;
+}
+render();
+
+/* ---------- Server sync (GET /api/state) ---------- */
+async function fetchServerState(){
+  try{
+    const r = await fetch('/api/state');
+    if(!r.ok) throw new Error('status ' + r.status);
+    const j = await r.json();
+    $('serverBalance').textContent = (typeof j.balance !== 'undefined') ? j.balance : '—';
+    $('serverPerClick').textContent = (typeof j.per_click !== 'undefined') ? j.per_click : '—';
+    dbgLog('Server state récupéré.');
+  }catch(e){
+    $('serverBalance').textContent = 'erreur';
+    $('serverPerClick').textContent = '—';
+    dbgLog('Impossible de récupérer /api/state: ' + e.message);
+  }
+}
+
+/* initial server fetch */
+fetchServerState();
+
+/* ---------- Click handling ---------- */
+async function onMineClick(){
+  // local increment
+  state.coins += state.perClick;
+  render();
+  saveState();
+  flash('+' + state.perClick);
+  dbgLog('Tu as miné +' + state.perClick + ' (local)');
+
+  // notify server (server will +1 coin on its side per /api/click)
+  try{
+    const r = await fetch('/api/click', { method: 'POST' });
+    if(!r.ok) throw new Error('status ' + r.status);
+    const j = await r.json();
+    if(j && typeof j.balance !== 'undefined'){
+      $('serverBalance').textContent = j.balance;
+      dbgLog('Serveur: +1 (global) — nouveau solde global: ' + j.balance);
+    } else {
+      dbgLog('Serveur: réponse inattendue');
+    }
+  }catch(e){
+    dbgLog('Erreur POST /api/click: ' + e.message);
+  }
+}
+
+$('mineBtn').addEventListener('click', ()=> onMineClick() );
+window.addEventListener('keydown', (e)=> { if(e.code === 'Space'){ e.preventDefault(); $('mineBtn').click(); } });
+
+function flash(text){
+  const el = $('subText');
+  const prev = el.textContent;
+  el.textContent = text;
+  setTimeout(()=> el.textContent = prev, 450);
+}
+
+/* ---------- Upgrades ---------- */
+$('buyPick').addEventListener('click', ()=>{
+  const cost = Math.floor(state.pickBaseCost * Math.pow(1.6, state.pickLevel));
+  if(state.coins >= cost){
+    state.coins -= cost;
+    state.pickLevel += 1;
+    state.perClick = 1 + state.pickLevel * 1;
+    dbgLog('Acheté: Pioche niveau ' + state.pickLevel);
+    render(); saveState();
+  } else { dbgLog('Pas assez de coins pour acheter la pioche.'); }
+});
+
+$('buyAuto').addEventListener('click', ()=>{
+  const cost = Math.floor(state.autoBaseCost * Math.pow(1.7, state.autoLevel));
+  if(state.coins >= cost){
+    state.coins -= cost;
+    state.autoLevel += 1;
+    state.perSec = state.autoLevel * 1;
+    dbgLog('Acheté: Mineur automatique x' + state.autoLevel);
+    render(); saveState();
+  } else { dbgLog('Pas assez de coins pour acheter le mineur automatique.'); }
+});
+
+/* ---------- Auto-minage ---------- */
+setInterval(()=>{
+  if(state.perSec > 0){
+    state.coins += state.perSec;
+    render();
+    saveState();
+    dbgLog('Auto-minage: +' + state.perSec);
+    // NOTE: par sécurité on ne spamme pas le serveur avec chaque tick
+  }
+}, 1000);
+
+/* ---------- Controls: reset, export, sync ---------- */
+$('resetBtn').addEventListener('click', ()=>{
+  if(confirm('Réinitialiser la progression locale ?')){
+    state = Object.assign({}, DEFAULT);
+    saveState(); render();
+    dbgLog('Progression locale réinitialisée.');
+  }
+});
+
+$('exportBtn').addEventListener('click', ()=>{
+  const txt = btoa(JSON.stringify(state));
+  prompt('Copie ce texte (CTRL+C) pour sauvegarder ta progression locale :', txt);
+});
+
+$('syncServer').addEventListener('click', async ()=>{
+  dbgLog('Récupération état serveur...');
+  await fetchServerState();
+});
+
+/* optional: periodic server state refresh (every 20s) */
+setInterval(fetchServerState, 20000);
+
+/* ---------- On load message ---------- */
+if(state.coins === 0 && state.pickLevel === 0 && state.autoLevel === 0){
+  dbgLog('Bienvenue ! Utilise le bouton pour miner. Appuie sur ' + (navigator.platform.includes('Mac') ? '⌥' : 'Espace') + ' ou clique.');
+} else {
+  dbgLog('Progression locale chargée.');
+}
+</script>
+</body>
+</html>
