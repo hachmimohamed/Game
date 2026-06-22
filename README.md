@@ -1,2 +1,0 @@
-# Game
-Jeux de mining
